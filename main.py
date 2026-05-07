@@ -308,7 +308,7 @@ def _extract_json(raw: str) -> str:
     return raw[start:]  # fallback: return from first { to end
 
 
-@app.post("/api/analyze")
+@app.post("/analyze")
 async def analyze(req: AnalyzeRequest):
     if not req.situation.strip():
         raise HTTPException(status_code=400, detail="情境描述不能為空")
@@ -335,7 +335,7 @@ async def analyze(req: AnalyzeRequest):
     return _validate_and_clamp(data)
 
 
-@app.post("/api/analyze/stream")
+@app.post("/analyze/stream")
 async def analyze_stream(req: AnalyzeRequest):
     if not req.situation.strip():
         raise HTTPException(status_code=400, detail="情境描述不能為空")
@@ -399,6 +399,6 @@ async def analyze_stream(req: AnalyzeRequest):
     )
 
 
-@app.get("/api/health")
+@app.get("/health")
 async def health():
     return {"status": "online", "system": "I-GONE v3.0"}
