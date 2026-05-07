@@ -15,11 +15,7 @@ app = FastAPI(title="I-GONE API", version="1.0.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:5173",
-        "http://localhost:4173",
-        "http://127.0.0.1:5173",
-    ],
+    allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
@@ -250,11 +246,14 @@ def _validate_and_clamp(data: dict) -> dict:
     """Validate and clamp all fields in the API response."""
     data["level"] = max(1, min(5, int(data.get("level", 1))))
     data["awkward_percent"] = max(0, min(100, int(data.get("awkward_percent", 50))))
-    data["social_energy_before"] = max(0, min(100, int(data.get("social_energy_before", 60))))
-    data["social_energy_consume"] = max(0, min(100, int(data.get("social_energy_consume", 10))))
+    data["social_energy_before"] = max(
+        0, min(100, int(data.get("social_energy_before", 60)))
+    )
+    data["social_energy_consume"] = max(
+        0, min(100, int(data.get("social_energy_consume", 10)))
+    )
     data["social_energy_after"] = max(
-        0,
-        min(100, data["social_energy_before"] - data["social_energy_consume"])
+        0, min(100, data["social_energy_before"] - data["social_energy_consume"])
     )
     for key in ("risk_convo_extend", "risk_forced_chat", "risk_exit_feasibility"):
         if key in data:
@@ -282,7 +281,7 @@ def _strip_fences(raw: str) -> str:
 
 def _extract_json(raw: str) -> str:
     """Extract the first complete JSON object from raw text, ignoring trailing content."""
-    start = raw.find('{')
+    start = raw.find("{")
     if start == -1:
         return raw
     depth = 0
@@ -292,7 +291,7 @@ def _extract_json(raw: str) -> str:
         if escape_next:
             escape_next = False
             continue
-        if ch == '\\' and in_string:
+        if ch == "\\" and in_string:
             escape_next = True
             continue
         if ch == '"':
@@ -300,12 +299,12 @@ def _extract_json(raw: str) -> str:
             continue
         if in_string:
             continue
-        if ch == '{':
+        if ch == "{":
             depth += 1
-        elif ch == '}':
+        elif ch == "}":
             depth -= 1
             if depth == 0:
-                return raw[start:i + 1]
+                return raw[start : i + 1]
     return raw[start:]  # fallback: return from first { to end
 
 
@@ -330,8 +329,7 @@ async def analyze(req: AnalyzeRequest):
         data = json.loads(raw)
     except json.JSONDecodeError as e:
         raise HTTPException(
-            status_code=500,
-            detail=f"AI 回應格式異常，無法解析 JSON：{str(e)}"
+            status_code=500, detail=f"AI 回應格式異常，無法解析 JSON：{str(e)}"
         )
 
     return _validate_and_clamp(data)
@@ -345,9 +343,19 @@ async def analyze_stream(req: AnalyzeRequest):
     _prompt = SYSTEM_PROMPT if req.expand else SYSTEM_PROMPT_QUICK
     _max_tok = 4096 if req.expand else 2500
     _stages = (
-        ["正在評估情境架構…", "計算社交風險與能量消耗…", "生成應對策略矩陣…", "模擬對方可能反應…"]
-        if req.expand else
-        ["正在評估情境架構…", "計算社交風險與能量消耗…", "生成應對策略矩陣…", "模擬對方可能反應…"]
+        [
+            "正在評估情境架構…",
+            "計算社交風險與能量消耗…",
+            "生成應對策略矩陣…",
+            "模擬對方可能反應…",
+        ]
+        if req.expand
+        else [
+            "正在評估情境架構…",
+            "計算社交風險與能量消耗…",
+            "生成應對策略矩陣…",
+            "模擬對方可能反應…",
+        ]
     )
     _thresholds = [0, 200, 500, 900] if req.expand else [0, 60, 160, 250]
 
@@ -366,7 +374,10 @@ async def analyze_stream(req: AnalyzeRequest):
             for text_chunk in stream.text_stream:
                 full_text += text_chunk
                 next_stage = current_stage + 1
-                if next_stage < len(_stages) and len(full_text) >= _thresholds[next_stage]:
+                if (
+                    next_stage < len(_stages)
+                    and len(full_text) >= _thresholds[next_stage]
+                ):
                     current_stage = next_stage
                     yield f"data: {json.dumps({'stage': _stages[current_stage]})}\n\n"
 
